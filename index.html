@@ -211,6 +211,7 @@
             display: flex;
             align-items: center;
             gap: 30px;
+            flex-wrap: wrap;
         }
 
         .album-icon {
@@ -226,6 +227,10 @@
             box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.5);
         }
 
+        .song-details {
+            flex: 1;
+        }
+
         .song-details h2 {
             font-size: 2rem;
             font-weight: 900;
@@ -238,6 +243,25 @@
             color: #c4b5fd;
             margin-bottom: 20px;
         }
+
+        .difficulty-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 15px;
+            animation: fadeIn 0.5s;
+        }
+
+        .difficulty-A1 { background: linear-gradient(90deg, #10b981, #34d399); color: white; }
+        .difficulty-A2 { background: linear-gradient(90deg, #3b82f6, #60a5fa); color: white; }
+        .difficulty-B1 { background: linear-gradient(90deg, #f59e0b, #fbbf24); color: #111827; }
+        .difficulty-B2 { background: linear-gradient(90deg, #f97316, #fb923c); color: white; }
+        .difficulty-C1 { background: linear-gradient(90deg, #ef4444, #f87171); color: white; }
+        .difficulty-C2 { background: linear-gradient(90deg, #991b1b, #dc2626); color: white; }
 
         .links {
             display: flex;
@@ -281,6 +305,7 @@
             gap: 20px;
             justify-content: center;
             margin-bottom: 30px;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -411,6 +436,50 @@
             line-height: 1.8;
             font-size: 1.1rem;
             white-space: pre-wrap;
+        }
+
+        /* Evidenziazione strutture grammaticali */
+        .highlight-modal { background-color: rgba(236, 72, 153, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-present-simple { background-color: rgba(34, 197, 94, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-present-continuous { background-color: rgba(59, 130, 246, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-past-simple { background-color: rgba(245, 158, 11, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-past-continuous { background-color: rgba(251, 146, 60, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-future { background-color: rgba(168, 85, 247, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-phrasal { background-color: rgba(251, 191, 36, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+        .highlight-conditional { background-color: rgba(244, 63, 94, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
+
+        .grammar-legend {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .grammar-legend h5 {
+            color: #93c5fd;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            color: white;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            border-radius: 3px;
         }
 
         .grammar-container {
@@ -614,6 +683,7 @@
                         <div class="song-details">
                             <h2 id="songTitle"></h2>
                             <p id="songArtist"></p>
+                            <div id="difficultyBadge"></div>
                             <div class="links" id="linksContainer"></div>
                         </div>
                     </div>
@@ -638,6 +708,7 @@
                                 <div class="status-dot blue-dot"></div>
                                 <h4 class="original-header">Original 🇬🇧</h4>
                             </div>
+                            <div class="grammar-legend" id="grammarLegend"></div>
                             <div class="lyrics-text" id="originalLyrics"></div>
                         </div>
                     </div>
@@ -671,6 +742,7 @@
 
     <script>
         let currentTab = 'lyrics';
+        let highlightedFeatures = [];
 
         function toggleMode() {
             const autoMode = document.getElementById('autoMode');
@@ -769,6 +841,161 @@
             return translations.join('\n\n');
         }
 
+        function calculateDifficulty(text, features) {
+            let score = 0;
+            const lowerText = text.toLowerCase();
+            
+            // Lunghezza e complessità del testo
+            const wordCount = text.split(/\s+/).length;
+            if (wordCount > 300) score += 2;
+            else if (wordCount > 200) score += 1;
+            
+            // Strutture grammaticali avanzate
+            if (features.includes('Present Perfect')) score += 2;
+            if (features.includes('Past Continuous')) score += 1;
+            if (features.includes('Forma passiva')) score += 2;
+            if (features.includes('Frasi condizionali (if...)')) score += 2;
+            if (features.includes('Phrasal verbs')) score += 1;
+            if (features.includes('Gerundio (-ing dopo certi verbi)')) score += 1;
+            
+            // Vocabolario complesso (frasi lunghe)
+            const sentences = text.split(/[.!?]+/);
+            const avgWordsPerSentence = wordCount / sentences.length;
+            if (avgWordsPerSentence > 15) score += 2;
+            else if (avgWordsPerSentence > 10) score += 1;
+            
+            // Tempi verbali multipli
+            const tenses = features.filter(f => 
+                f.includes('Present') || f.includes('Past') || f.includes('Future') || f.includes('Perfect')
+            ).length;
+            if (tenses >= 4) score += 2;
+            else if (tenses >= 3) score += 1;
+            
+            // Determina il livello
+            if (score <= 3) return 'A1';
+            if (score <= 6) return 'A2';
+            if (score <= 9) return 'B1';
+            if (score <= 12) return 'B2';
+            if (score <= 15) return 'C1';
+            return 'C2';
+        }
+
+        function getDifficultyDescription(level) {
+            const descriptions = {
+                'A1': 'Principiante - Vocabolario base, strutture semplici',
+                'A2': 'Elementare - Frasi semplici, presente e passato base',
+                'B1': 'Intermedio - Varietà di tempi verbali, vocabolario comune',
+                'B2': 'Intermedio Alto - Strutture complesse, vocabolario ampio',
+                'C1': 'Avanzato - Linguaggio sofisticato, espressioni idiomatiche',
+                'C2': 'Padronanza - Linguaggio molto complesso e articolato'
+            };
+            return descriptions[level] || '';
+        }
+
+        function highlightGrammar(text) {
+            highlightedFeatures = [];
+            let highlighted = text;
+            
+            // Definisci i pattern con priorità (dal più specifico al più generico)
+            const patterns = [
+                // Modal verbs
+                { 
+                    regex: /\b(can|could|will|would|shall|should|may|might|must|ought to)\s+\w+/gi, 
+                    class: 'highlight-modal',
+                    name: 'Verbi modali'
+                },
+                // Present Continuous
+                {
+                    regex: /\b(am|is|are)\s+\w+ing\b/gi,
+                    class: 'highlight-present-continuous',
+                    name: 'Present Continuous'
+                },
+                // Past Continuous
+                {
+                    regex: /\b(was|were)\s+\w+ing\b/gi,
+                    class: 'highlight-past-continuous',
+                    name: 'Past Continuous'
+                },
+                // Future
+                {
+                    regex: /\b(will|gonna|going to)\s+\w+/gi,
+                    class: 'highlight-future',
+                    name: 'Futuro'
+                },
+                // Phrasal verbs
+                {
+                    regex: /\b(give up|look for|turn on|turn off|get up|wake up|come back|go away|find out|look after|come on|hold on|break down|carry on)\b/gi,
+                    class: 'highlight-phrasal',
+                    name: 'Phrasal verbs'
+                },
+                // Conditional
+                {
+                    regex: /\bif\s+[^,.!?]+\b(would|could|will|can)\b[^,.!?]*/gi,
+                    class: 'highlight-conditional',
+                    name: 'Condizionale'
+                },
+                // Past Simple (verbi irregolari comuni)
+                {
+                    regex: /\b(was|were|had|went|came|saw|made|got|took|gave|said|told|thought|felt|knew|did)\b/gi,
+                    class: 'highlight-past-simple',
+                    name: 'Past Simple'
+                },
+                // Present Simple (verbi comuni)
+                {
+                    regex: /\b(am|is|are|do|does|have|has|want|need|like|love|know|think)\b/gi,
+                    class: 'highlight-present-simple',
+                    name: 'Present Simple'
+                }
+            ];
+
+            // Applica gli highlight
+            patterns.forEach(pattern => {
+                const matches = text.match(pattern.regex);
+                if (matches) {
+                    highlightedFeatures.push(pattern.name);
+                    highlighted = highlighted.replace(pattern.regex, match => 
+                        `<span class="${pattern.class}" title="${pattern.name}">${match}</span>`
+                    );
+                }
+            });
+
+            // Rimuovi duplicati
+            highlightedFeatures = [...new Set(highlightedFeatures)];
+            
+            return highlighted;
+        }
+
+        function createGrammarLegend() {
+            if (highlightedFeatures.length === 0) return '';
+            
+            const legendColors = {
+                'Verbi modali': 'rgba(236, 72, 153, 0.6)',
+                'Present Simple': 'rgba(34, 197, 94, 0.6)',
+                'Present Continuous': 'rgba(59, 130, 246, 0.6)',
+                'Past Simple': 'rgba(245, 158, 11, 0.6)',
+                'Past Continuous': 'rgba(251, 146, 60, 0.6)',
+                'Futuro': 'rgba(168, 85, 247, 0.6)',
+                'Phrasal verbs': 'rgba(251, 191, 36, 0.6)',
+                'Condizionale': 'rgba(244, 63, 94, 0.6)'
+            };
+
+            let legendHtml = '<h5>🎨 Legenda colori:</h5><div class="legend-items">';
+            
+            highlightedFeatures.forEach(feature => {
+                if (legendColors[feature]) {
+                    legendHtml += `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: ${legendColors[feature]}"></div>
+                            <span>${feature}</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            legendHtml += '</div>';
+            return legendHtml;
+        }
+
         async function analyzeManual() {
             const artist = document.getElementById('manualArtist').value.trim();
             const title = document.getElementById('manualTitle').value.trim();
@@ -793,6 +1020,8 @@
                 const translatedLyrics = await translateText(lyrics);
                 buttonText.innerHTML = '⏳ Analizzo grammatica...';
                 const grammaticalFeatures = analyzeGrammar(lyrics);
+                const difficulty = calculateDifficulty(lyrics, grammaticalFeatures);
+                const highlightedLyrics = highlightGrammar(lyrics);
 
                 const youtubeLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(artist + ' ' + title + ' official')}`;
                 const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + title)}`;
@@ -801,10 +1030,12 @@
                     title: title,
                     artist: artist,
                     originalLyrics: lyrics.trim(),
+                    highlightedLyrics: highlightedLyrics,
                     italianTranslation: translatedLyrics.trim(),
                     youtubeLink: youtubeLink,
                     spotifyLink: spotifyLink,
-                    grammaticalFeatures: grammaticalFeatures
+                    grammaticalFeatures: grammaticalFeatures,
+                    difficulty: difficulty
                 });
             } catch (err) {
                 console.error(err);
@@ -864,6 +1095,8 @@
 
                 buttonText.innerHTML = '⏳ Analizzo grammatica...';
                 const grammaticalFeatures = analyzeGrammar(originalLyrics);
+                const difficulty = calculateDifficulty(originalLyrics, grammaticalFeatures);
+                const highlightedLyrics = highlightGrammar(originalLyrics);
 
                 const youtubeLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(artist + ' ' + songTitle + ' official')}`;
                 const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + songTitle)}`;
@@ -872,10 +1105,12 @@
                     title: songTitle,
                     artist: artist,
                     originalLyrics: originalLyrics.trim(),
+                    highlightedLyrics: highlightedLyrics,
                     italianTranslation: translatedLyrics.trim(),
                     youtubeLink: youtubeLink,
                     spotifyLink: spotifyLink,
-                    grammaticalFeatures: grammaticalFeatures
+                    grammaticalFeatures: grammaticalFeatures,
+                    difficulty: difficulty
                 });
 
             } catch (err) {
@@ -978,7 +1213,22 @@
         function displayResults(result) {
             document.getElementById('songTitle').textContent = result.title;
             document.getElementById('songArtist').textContent = result.artist;
-            document.getElementById('originalLyrics').textContent = result.originalLyrics;
+            
+            // Badge difficoltà
+            const difficultyBadge = document.getElementById('difficultyBadge');
+            difficultyBadge.innerHTML = `
+                <div class="difficulty-badge difficulty-${result.difficulty}">
+                    📊 Livello: ${result.difficulty} - ${getDifficultyDescription(result.difficulty)}
+                </div>
+            `;
+
+            // Testo evidenziato
+            document.getElementById('originalLyrics').innerHTML = result.highlightedLyrics;
+            
+            // Leggenda
+            document.getElementById('grammarLegend').innerHTML = createGrammarLegend();
+            
+            // Traduzione
             document.getElementById('translatedLyrics').textContent = result.italianTranslation;
 
             const linksContainer = document.getElementById('linksContainer');
