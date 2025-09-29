@@ -438,7 +438,6 @@
             white-space: pre-wrap;
         }
 
-        /* Evidenziazione strutture grammaticali */
         .highlight-modal { background-color: rgba(236, 72, 153, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
         .highlight-present-simple { background-color: rgba(34, 197, 94, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
         .highlight-present-continuous { background-color: rgba(59, 130, 246, 0.4); padding: 2px 4px; border-radius: 3px; cursor: help; }
@@ -779,6 +778,16 @@
             }
         }
 
+        // Funzione con timeout
+        function fetchWithTimeout(url, options = {}, timeout = 10000) {
+            return Promise.race([
+                fetch(url, options),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout: richiesta troppo lenta')), timeout)
+                )
+            ]);
+        }
+
         function chunkText(text, maxLength = 450) {
             const lines = text.split('\n');
             const chunks = [];
@@ -823,8 +832,10 @@
             
             for (let i = 0; i < chunks.length; i++) {
                 try {
-                    const response = await fetch(
-                        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=en|it`
+                    const response = await fetchWithTimeout(
+                        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=en|it`,
+                        {},
+                        8000
                     );
                     const data = await response.json();
                     translations.push(data.responseData.translatedText);
@@ -845,12 +856,10 @@
             let score = 0;
             const lowerText = text.toLowerCase();
             
-            // Lunghezza e complessità del testo
             const wordCount = text.split(/\s+/).length;
             if (wordCount > 300) score += 2;
             else if (wordCount > 200) score += 1;
             
-            // Strutture grammaticali avanzate
             if (features.includes('Present Perfect')) score += 2;
             if (features.includes('Past Continuous')) score += 1;
             if (features.includes('Forma passiva')) score += 2;
@@ -858,20 +867,17 @@
             if (features.includes('Phrasal verbs')) score += 1;
             if (features.includes('Gerundio (-ing dopo certi verbi)')) score += 1;
             
-            // Vocabolario complesso (frasi lunghe)
             const sentences = text.split(/[.!?]+/);
             const avgWordsPerSentence = wordCount / sentences.length;
             if (avgWordsPerSentence > 15) score += 2;
             else if (avgWordsPerSentence > 10) score += 1;
             
-            // Tempi verbali multipli
             const tenses = features.filter(f => 
                 f.includes('Present') || f.includes('Past') || f.includes('Future') || f.includes('Perfect')
             ).length;
             if (tenses >= 4) score += 2;
             else if (tenses >= 3) score += 1;
             
-            // Determina il livello
             if (score <= 3) return 'A1';
             if (score <= 6) return 'A2';
             if (score <= 9) return 'B1';
@@ -896,51 +902,42 @@
             highlightedFeatures = [];
             let highlighted = text;
             
-            // Definisci i pattern con priorità (dal più specifico al più generico)
             const patterns = [
-                // Modal verbs
                 { 
                     regex: /\b(can|could|will|would|shall|should|may|might|must|ought to)\s+\w+/gi, 
                     class: 'highlight-modal',
                     name: 'Verbi modali'
                 },
-                // Present Continuous
                 {
                     regex: /\b(am|is|are)\s+\w+ing\b/gi,
                     class: 'highlight-present-continuous',
                     name: 'Present Continuous'
                 },
-                // Past Continuous
                 {
                     regex: /\b(was|were)\s+\w+ing\b/gi,
                     class: 'highlight-past-continuous',
                     name: 'Past Continuous'
                 },
-                // Future
                 {
                     regex: /\b(will|gonna|going to)\s+\w+/gi,
                     class: 'highlight-future',
                     name: 'Futuro'
                 },
-                // Phrasal verbs
                 {
                     regex: /\b(give up|look for|turn on|turn off|get up|wake up|come back|go away|find out|look after|come on|hold on|break down|carry on)\b/gi,
                     class: 'highlight-phrasal',
                     name: 'Phrasal verbs'
                 },
-                // Conditional
                 {
                     regex: /\bif\s+[^,.!?]+\b(would|could|will|can)\b[^,.!?]*/gi,
                     class: 'highlight-conditional',
                     name: 'Condizionale'
                 },
-                // Past Simple (verbi irregolari comuni)
                 {
                     regex: /\b(was|were|had|went|came|saw|made|got|took|gave|said|told|thought|felt|knew|did)\b/gi,
                     class: 'highlight-past-simple',
                     name: 'Past Simple'
                 },
-                // Present Simple (verbi comuni)
                 {
                     regex: /\b(am|is|are|do|does|have|has|want|need|like|love|know|think)\b/gi,
                     class: 'highlight-present-simple',
@@ -948,7 +945,6 @@
                 }
             ];
 
-            // Applica gli highlight
             patterns.forEach(pattern => {
                 const matches = text.match(pattern.regex);
                 if (matches) {
@@ -959,7 +955,6 @@
                 }
             });
 
-            // Rimuovi duplicati
             highlightedFeatures = [...new Set(highlightedFeatures)];
             
             return highlighted;
@@ -1039,7 +1034,7 @@
                 });
             } catch (err) {
                 console.error(err);
-                errorDiv.textContent = '⚠️ Errore durante l\'analisi';
+                errorDiv.textContent = '⚠️ ' + (err.message || 'Errore durante l\'analisi');
                 errorDiv.classList.remove('hidden');
             } finally {
                 button.disabled = false;
@@ -1069,28 +1064,29 @@
             buttonText.innerHTML = '⏳ Cerco il testo...';
 
             try {
-                const lyricsResponse = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songTitle)}`);
+                console.log('Cerco:', artist, songTitle);
+                
+                const lyricsResponse = await fetchWithTimeout(
+                    `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songTitle)}`,
+                    {},
+                    10000
+                );
+                
+                console.log('Response status:', lyricsResponse.status);
                 
                 if (!lyricsResponse.ok) {
-                    infoDiv.innerHTML = `
-                        ℹ️ Canzone non trovata nel database automatico.<br>
-                        <strong>Suggerimento:</strong> Prova a:<br>
-                        • Verificare l'ortografia di artista e titolo<br>
-                        • Cercare con varianti del titolo (es. con/senza "A", "The")<br>
-                        • Usare la modalità manuale cliccando sul link qui sotto
-                    `;
-                    infoDiv.classList.remove('hidden');
-                    throw new Error('Canzone non trovata');
+                    throw new Error('CANZONE_NON_TROVATA');
                 }
 
                 const lyricsData = await lyricsResponse.json();
+                console.log('Lyrics data received');
                 const originalLyrics = lyricsData.lyrics;
 
                 if (!originalLyrics) {
-                    throw new Error('Testo non disponibile');
+                    throw new Error('TESTO_NON_DISPONIBILE');
                 }
 
-                buttonText.innerHTML = '⏳ Traduco (può richiedere alcuni secondi)...';
+                buttonText.innerHTML = '⏳ Traduco...';
                 const translatedLyrics = await translateText(originalLyrics);
 
                 buttonText.innerHTML = '⏳ Analizzo grammatica...';
@@ -1114,11 +1110,25 @@
                 });
 
             } catch (err) {
-                console.error(err);
-                if (!infoDiv.classList.contains('hidden')) {
-                    // Già mostrato suggerimento
+                console.error('Errore completo:', err);
+                
+                if (err.message === 'CANZONE_NON_TROVATA') {
+                    infoDiv.innerHTML = `
+                        ℹ️ Canzone non trovata nel database automatico.<br>
+                        <strong>Suggerimento:</strong> Prova a:<br>
+                        • Verificare l'ortografia di artista e titolo<br>
+                        • Cercare con varianti del titolo (es. con/senza "A", "The")<br>
+                        • <strong>Usare la modalità manuale cliccando sul link qui sotto ⬇️</strong>
+                    `;
+                    infoDiv.classList.remove('hidden');
+                } else if (err.message === 'TESTO_NON_DISPONIBILE') {
+                    errorDiv.textContent = '⚠️ Testo non disponibile per questa canzone. Usa la modalità manuale.';
+                    errorDiv.classList.remove('hidden');
+                } else if (err.message.includes('Timeout')) {
+                    errorDiv.textContent = '⚠️ Richiesta troppo lenta. Riprova o usa la modalità manuale.';
+                    errorDiv.classList.remove('hidden');
                 } else {
-                    errorDiv.textContent = '⚠️ ' + (err.message || 'Errore durante l\'analisi');
+                    errorDiv.textContent = '⚠️ Errore di connessione. Verifica la tua connessione internet o usa la modalità manuale.';
                     errorDiv.classList.remove('hidden');
                 }
             } finally {
@@ -1214,7 +1224,6 @@
             document.getElementById('songTitle').textContent = result.title;
             document.getElementById('songArtist').textContent = result.artist;
             
-            // Badge difficoltà
             const difficultyBadge = document.getElementById('difficultyBadge');
             difficultyBadge.innerHTML = `
                 <div class="difficulty-badge difficulty-${result.difficulty}">
@@ -1222,13 +1231,8 @@
                 </div>
             `;
 
-            // Testo evidenziato
             document.getElementById('originalLyrics').innerHTML = result.highlightedLyrics;
-            
-            // Leggenda
             document.getElementById('grammarLegend').innerHTML = createGrammarLegend();
-            
-            // Traduzione
             document.getElementById('translatedLyrics').textContent = result.italianTranslation;
 
             const linksContainer = document.getElementById('linksContainer');
