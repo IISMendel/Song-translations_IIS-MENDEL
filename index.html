@@ -84,6 +84,7 @@
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
+            margin-bottom: 15px;
         }
 
         .input-group {
@@ -91,7 +92,7 @@
             min-width: 200px;
         }
 
-        input {
+        input, textarea {
             width: 100%;
             padding: 18px 20px;
             background: rgba(255, 255, 255, 0.2);
@@ -101,13 +102,19 @@
             font-size: 16px;
             outline: none;
             transition: all 0.3s;
+            font-family: inherit;
         }
 
-        input::placeholder {
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        input::placeholder, textarea::placeholder {
             color: #c4b5fd;
         }
 
-        input:focus {
+        input:focus, textarea:focus {
             border-color: #ec4899;
             box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.3);
         }
@@ -126,7 +133,7 @@
             white-space: nowrap;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             transform: scale(1.05);
             box-shadow: 0 15px 30px -5px rgba(236, 72, 153, 0.7);
         }
@@ -137,6 +144,23 @@
             transform: none;
         }
 
+        .manual-mode-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .manual-mode-link a {
+            color: #fbbf24;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .manual-mode-link a:hover {
+            color: #fcd34d;
+            text-decoration: underline;
+        }
+
         .error {
             margin-top: 20px;
             padding: 15px;
@@ -144,6 +168,15 @@
             border: 1px solid rgba(239, 68, 68, 0.5);
             border-radius: 12px;
             color: #fecaca;
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 12px;
+            color: #bfdbfe;
         }
 
         .results {
@@ -523,18 +556,52 @@
         <div class="search-box">
             <div class="glow-effect"></div>
             <div class="search-container">
-                <div class="search-input-container">
-                    <div class="input-group">
-                        <input type="text" id="artistInput" placeholder="Artista (es: Queen)">
+                <!-- Modalità Automatica -->
+                <div id="autoMode">
+                    <div class="search-input-container">
+                        <div class="input-group">
+                            <input type="text" id="artistInput" placeholder="Artista (es: Queen)">
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="songInput" placeholder="Titolo (es: Bohemian Rhapsody)">
+                        </div>
+                        <button onclick="analyzeSong()">
+                            <span id="buttonText">✨ ANALIZZA</span>
+                        </button>
                     </div>
-                    <div class="input-group">
-                        <input type="text" id="songInput" placeholder="Titolo (es: Radio Ga Ga)">
+                    <div class="manual-mode-link">
+                        <a href="#" onclick="toggleMode(); return false;">📝 Non trovi la canzone? Incolla il testo manualmente</a>
                     </div>
-                    <button onclick="analyzeSong()">
-                        <span id="buttonText">✨ ANALIZZA</span>
-                    </button>
                 </div>
+
+                <!-- Modalità Manuale -->
+                <div id="manualMode" class="hidden">
+                    <div class="search-input-container">
+                        <div class="input-group">
+                            <input type="text" id="manualArtist" placeholder="Artista">
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="manualTitle" placeholder="Titolo canzone">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <textarea id="manualLyrics" placeholder="Incolla qui il testo in inglese..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <button onclick="analyzeManual()" style="flex: 1;">
+                            <span id="manualButtonText">✨ ANALIZZA</span>
+                        </button>
+                        <button onclick="toggleMode()" style="background: linear-gradient(90deg, #6b7280, #4b5563);">
+                            ← Torna alla ricerca
+                        </button>
+                    </div>
+                    <div class="manual-mode-link">
+                        <small style="color: #c4b5fd;">💡 Suggerimento: Puoi trovare i testi su siti come genius.com o azlyrics.com</small>
+                    </div>
+                </div>
+
                 <div id="errorMessage" class="error hidden"></div>
+                <div id="infoMessage" class="info hidden"></div>
             </div>
         </div>
 
@@ -605,16 +672,24 @@
     <script>
         let currentTab = 'lyrics';
 
+        function toggleMode() {
+            const autoMode = document.getElementById('autoMode');
+            const manualMode = document.getElementById('manualMode');
+            const errorDiv = document.getElementById('errorMessage');
+            const infoDiv = document.getElementById('infoMessage');
+            
+            autoMode.classList.toggle('hidden');
+            manualMode.classList.toggle('hidden');
+            errorDiv.classList.add('hidden');
+            infoDiv.classList.add('hidden');
+        }
+
         document.getElementById('songInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                analyzeSong();
-            }
+            if (e.key === 'Enter') analyzeSong();
         });
 
         document.getElementById('artistInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                analyzeSong();
-            }
+            if (e.key === 'Enter') analyzeSong();
         });
 
         function switchTab(tab) {
@@ -632,7 +707,6 @@
             }
         }
 
-        // Funzione per dividere il testo in chunk
         function chunkText(text, maxLength = 450) {
             const lines = text.split('\n');
             const chunks = [];
@@ -644,7 +718,6 @@
                         chunks.push(currentChunk.trim());
                         currentChunk = '';
                     }
-                    // Se una singola riga è troppo lunga, la dividiamo
                     if (line.length > maxLength) {
                         const words = line.split(' ');
                         let tempChunk = '';
@@ -672,7 +745,6 @@
             return chunks;
         }
 
-        // Funzione per tradurre con delay tra le richieste
         async function translateText(text) {
             const chunks = chunkText(text);
             const translations = [];
@@ -685,25 +757,72 @@
                     const data = await response.json();
                     translations.push(data.responseData.translatedText);
                     
-                    // Delay tra richieste per evitare rate limiting
                     if (i < chunks.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, 300));
                     }
                 } catch (error) {
                     console.error('Errore traduzione chunk:', error);
-                    translations.push(chunks[i]); // Fallback al testo originale
+                    translations.push(chunks[i]);
                 }
             }
             
             return translations.join('\n\n');
         }
 
+        async function analyzeManual() {
+            const artist = document.getElementById('manualArtist').value.trim();
+            const title = document.getElementById('manualTitle').value.trim();
+            const lyrics = document.getElementById('manualLyrics').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            const resultsDiv = document.getElementById('results');
+            const button = event.target;
+            const buttonText = document.getElementById('manualButtonText');
+
+            if (!artist || !title || !lyrics) {
+                errorDiv.textContent = '⚠️ Compila tutti i campi';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            errorDiv.classList.add('hidden');
+            resultsDiv.classList.add('hidden');
+            button.disabled = true;
+            buttonText.innerHTML = '⏳ Traduco...';
+
+            try {
+                const translatedLyrics = await translateText(lyrics);
+                buttonText.innerHTML = '⏳ Analizzo grammatica...';
+                const grammaticalFeatures = analyzeGrammar(lyrics);
+
+                const youtubeLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(artist + ' ' + title + ' official')}`;
+                const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + title)}`;
+
+                displayResults({
+                    title: title,
+                    artist: artist,
+                    originalLyrics: lyrics.trim(),
+                    italianTranslation: translatedLyrics.trim(),
+                    youtubeLink: youtubeLink,
+                    spotifyLink: spotifyLink,
+                    grammaticalFeatures: grammaticalFeatures
+                });
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = '⚠️ Errore durante l\'analisi';
+                errorDiv.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                buttonText.innerHTML = '✨ ANALIZZA';
+            }
+        }
+
         async function analyzeSong() {
             const artist = document.getElementById('artistInput').value.trim();
             const songTitle = document.getElementById('songInput').value.trim();
             const errorDiv = document.getElementById('errorMessage');
+            const infoDiv = document.getElementById('infoMessage');
             const resultsDiv = document.getElementById('results');
-            const button = document.querySelector('button');
+            const button = document.querySelector('#autoMode button');
             const buttonText = document.getElementById('buttonText');
 
             if (!artist || !songTitle) {
@@ -713,15 +832,23 @@
             }
 
             errorDiv.classList.add('hidden');
+            infoDiv.classList.add('hidden');
             resultsDiv.classList.add('hidden');
             button.disabled = true;
             buttonText.innerHTML = '⏳ Cerco il testo...';
 
             try {
-                // 1. Ottieni i testi da lyrics.ovh
                 const lyricsResponse = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songTitle)}`);
                 
                 if (!lyricsResponse.ok) {
+                    infoDiv.innerHTML = `
+                        ℹ️ Canzone non trovata nel database automatico.<br>
+                        <strong>Suggerimento:</strong> Prova a:<br>
+                        • Verificare l'ortografia di artista e titolo<br>
+                        • Cercare con varianti del titolo (es. con/senza "A", "The")<br>
+                        • Usare la modalità manuale cliccando sul link qui sotto
+                    `;
+                    infoDiv.classList.remove('hidden');
                     throw new Error('Canzone non trovata');
                 }
 
@@ -733,16 +860,11 @@
                 }
 
                 buttonText.innerHTML = '⏳ Traduco (può richiedere alcuni secondi)...';
-
-                // 2. Traduci il testo dividendolo in chunk
                 const translatedLyrics = await translateText(originalLyrics);
 
                 buttonText.innerHTML = '⏳ Analizzo grammatica...';
-
-                // 3. Analisi grammaticale
                 const grammaticalFeatures = analyzeGrammar(originalLyrics);
 
-                // 4. Crea link
                 const youtubeLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(artist + ' ' + songTitle + ' official')}`;
                 const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + songTitle)}`;
 
@@ -758,8 +880,12 @@
 
             } catch (err) {
                 console.error(err);
-                errorDiv.textContent = '⚠️ ' + (err.message || 'Errore durante l\'analisi. Verifica che artista e titolo siano corretti.');
-                errorDiv.classList.remove('hidden');
+                if (!infoDiv.classList.contains('hidden')) {
+                    // Già mostrato suggerimento
+                } else {
+                    errorDiv.textContent = '⚠️ ' + (err.message || 'Errore durante l\'analisi');
+                    errorDiv.classList.remove('hidden');
+                }
             } finally {
                 button.disabled = false;
                 buttonText.innerHTML = '✨ ANALIZZA';
@@ -770,89 +896,80 @@
             const features = [];
             const lowerText = text.toLowerCase();
 
-            // Present Simple
-            if (/\b(is|are|am|do|does|have|has|want|need|like|love|know|think)\b/.test(lowerText)) {
+            if (/\b(is|are|am|do|does|have|has|want|need|like|love|know|think|feel|see|hear|believe)\b/.test(lowerText)) {
                 features.push('Present Simple');
             }
 
-            // Present Continuous
             if (/\b(is|are|am)\s+\w+ing\b/.test(lowerText)) {
                 features.push('Present Continuous');
             }
 
-            // Past Simple
-            if (/\b(was|were|did|had|went|came|saw|made|got|took|gave|said|told)\b/.test(lowerText)) {
+            if (/\b(was|were|did|had|went|came|saw|made|got|took|gave|said|told|thought|felt|knew)\b/.test(lowerText)) {
                 features.push('Past Simple');
             }
 
-            // Past Continuous
             if (/\b(was|were)\s+\w+ing\b/.test(lowerText)) {
                 features.push('Past Continuous');
             }
 
-            // Modal verbs
             if (/\b(can|could|will|would|shall|should|may|might|must|ought)\b/.test(lowerText)) {
                 features.push('Verbi modali (can, will, should, ecc.)');
             }
 
-            // Future
             if (/\b(will|gonna|going to)\b/.test(lowerText)) {
                 features.push('Futuro (will / going to)');
             }
 
-            // Phrasal verbs
-            if (/\b(give up|look for|turn on|turn off|get up|wake up|come back|go away|find out|look after)\b/.test(lowerText)) {
+            if (/\b(give up|look for|turn on|turn off|get up|wake up|come back|go away|find out|look after|come on|hold on|break down|carry on)\b/.test(lowerText)) {
                 features.push('Phrasal verbs');
             }
 
-            // Present Perfect
-            if (/\b(have|has)\s+(been|\w+ed|\w+en)\b/.test(lowerText)) {
+            if (/\b(have|has)\s+(been|gone|done|seen|made|taken|given|\w+ed|\w+en)\b/.test(lowerText)) {
                 features.push('Present Perfect');
             }
 
-            // Conditional
-            if (/\bif\s+.*\b(would|could|will)\b/.test(lowerText)) {
+            if (/\bif\s+.*\b(would|could|will|can)\b/i.test(lowerText)) {
                 features.push('Frasi condizionali (if...)');
             }
 
-            // Passive voice
             if (/\b(is|are|was|were|been)\s+(been\s+)?\w+(ed|en)\b/.test(lowerText)) {
                 features.push('Forma passiva');
             }
 
-            // Comparatives
-            if (/\b(\w+er\s+than|more\s+\w+\s+than|less\s+\w+\s+than)\b/.test(lowerText)) {
+            if (/\b(\w+er\s+than|more\s+\w+\s+than|less\s+\w+\s+than|as\s+\w+\s+as)\b/.test(lowerText)) {
                 features.push('Comparativi');
             }
 
-            // Superlatives
-            if (/\b(the\s+\w+est|the\s+most\s+\w+|the\s+least\s+\w+)\b/.test(lowerText)) {
+            if (/\b(the\s+\w+est|the\s+most\s+\w+|the\s+least\s+\w+|the\s+best|the\s+worst)\b/.test(lowerText)) {
                 features.push('Superlativi');
             }
 
-            // Imperative
-            if (/^(don't|do|let|come|go|stop|wait|listen|look|take|make)\s/m.test(lowerText)) {
+            if (/^(don't|do|let|come|go|stop|wait|listen|look|take|make|try|help|give|tell|show)\s/m.test(lowerText)) {
                 features.push('Imperativo');
             }
 
-            // Questions
-            if (/\b(what|where|when|why|how|who|which)\b.*\?/.test(lowerText)) {
+            if (/\b(what|where|when|why|how|who|which|whose)\b.*\?/i.test(lowerText)) {
                 features.push('Domande (wh- questions)');
             }
 
-            // Negative forms
-            if (/\b(don't|doesn't|didn't|won't|can't|couldn't|shouldn't|wouldn't|isn't|aren't|wasn't|weren't)\b/.test(lowerText)) {
+            if (/\b(don't|doesn't|didn't|won't|can't|couldn't|shouldn't|wouldn't|isn't|aren't|wasn't|weren't|haven't|hasn't|never|no|not|nothing|nobody|nowhere)\b/.test(lowerText)) {
                 features.push('Forme negative');
             }
 
-            // Gerunds
-            if (/\b(enjoy|keep|stop|finish|avoid|consider|mind)\s+\w+ing\b/.test(lowerText)) {
+            if (/\b(enjoy|keep|stop|finish|avoid|consider|mind|love|hate|start|begin)\s+\w+ing\b/.test(lowerText)) {
                 features.push('Gerundio (-ing dopo certi verbi)');
             }
 
-            // Infinitives
-            if (/\bto\s+(be|have|do|go|make|get|see|know|think|take)\b/.test(lowerText)) {
+            if (/\bto\s+(be|have|do|go|make|get|see|know|think|take|come|want|need|try|feel|love|give)\b/.test(lowerText)) {
                 features.push('Infinito (to + verbo)');
+            }
+
+            if (/\b(my|your|his|her|its|our|their)\s+\w+/.test(lowerText)) {
+                features.push('Aggettivi possessivi');
+            }
+
+            if (/\b(i|you|he|she|it|we|they|me|him|her|us|them)\b/.test(lowerText)) {
+                features.push('Pronomi personali');
             }
 
             return features.length > 0 ? [...new Set(features)] : ['Strutture grammaticali di base'];
