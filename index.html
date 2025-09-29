@@ -632,6 +632,72 @@
             }
         }
 
+        // Funzione per dividere il testo in chunk
+        function chunkText(text, maxLength = 450) {
+            const lines = text.split('\n');
+            const chunks = [];
+            let currentChunk = '';
+
+            for (const line of lines) {
+                if ((currentChunk + line + '\n').length > maxLength) {
+                    if (currentChunk) {
+                        chunks.push(currentChunk.trim());
+                        currentChunk = '';
+                    }
+                    // Se una singola riga è troppo lunga, la dividiamo
+                    if (line.length > maxLength) {
+                        const words = line.split(' ');
+                        let tempChunk = '';
+                        for (const word of words) {
+                            if ((tempChunk + word + ' ').length > maxLength) {
+                                chunks.push(tempChunk.trim());
+                                tempChunk = word + ' ';
+                            } else {
+                                tempChunk += word + ' ';
+                            }
+                        }
+                        if (tempChunk) currentChunk = tempChunk;
+                    } else {
+                        currentChunk = line + '\n';
+                    }
+                } else {
+                    currentChunk += line + '\n';
+                }
+            }
+            
+            if (currentChunk) {
+                chunks.push(currentChunk.trim());
+            }
+            
+            return chunks;
+        }
+
+        // Funzione per tradurre con delay tra le richieste
+        async function translateText(text) {
+            const chunks = chunkText(text);
+            const translations = [];
+            
+            for (let i = 0; i < chunks.length; i++) {
+                try {
+                    const response = await fetch(
+                        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=en|it`
+                    );
+                    const data = await response.json();
+                    translations.push(data.responseData.translatedText);
+                    
+                    // Delay tra richieste per evitare rate limiting
+                    if (i < chunks.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                } catch (error) {
+                    console.error('Errore traduzione chunk:', error);
+                    translations.push(chunks[i]); // Fallback al testo originale
+                }
+            }
+            
+            return translations.join('\n\n');
+        }
+
         async function analyzeSong() {
             const artist = document.getElementById('artistInput').value.trim();
             const songTitle = document.getElementById('songInput').value.trim();
@@ -652,7 +718,7 @@
             buttonText.innerHTML = '⏳ Cerco il testo...';
 
             try {
-                // 1. Ottieni i testi da lyrics.ovh (API gratuita senza API key)
+                // 1. Ottieni i testi da lyrics.ovh
                 const lyricsResponse = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songTitle)}`);
                 
                 if (!lyricsResponse.ok) {
@@ -666,19 +732,14 @@
                     throw new Error('Testo non disponibile');
                 }
 
-                buttonText.innerHTML = '⏳ Traduco...';
+                buttonText.innerHTML = '⏳ Traduco (può richiedere alcuni secondi)...';
 
-                // 2. Traduci con MyMemory API (gratuita, senza API key)
-                const translationResponse = await fetch(
-                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalLyrics)}&langpair=en|it`
-                );
-                
-                const translationData = await translationResponse.json();
-                const translatedLyrics = translationData.responseData.translatedText;
+                // 2. Traduci il testo dividendolo in chunk
+                const translatedLyrics = await translateText(originalLyrics);
 
                 buttonText.innerHTML = '⏳ Analizzo grammatica...';
 
-                // 3. Analisi grammaticale semplice
+                // 3. Analisi grammaticale
                 const grammaticalFeatures = analyzeGrammar(originalLyrics);
 
                 // 4. Crea link
@@ -709,17 +770,17 @@
             const features = [];
             const lowerText = text.toLowerCase();
 
-            // Present Simple (verbi base senza -ing/-ed)
+            // Present Simple
             if (/\b(is|are|am|do|does|have|has|want|need|like|love|know|think)\b/.test(lowerText)) {
                 features.push('Present Simple');
             }
 
-            // Present Continuous (-ing)
+            // Present Continuous
             if (/\b(is|are|am)\s+\w+ing\b/.test(lowerText)) {
                 features.push('Present Continuous');
             }
 
-            // Past Simple (-ed o verbi irregolari)
+            // Past Simple
             if (/\b(was|were|did|had|went|came|saw|made|got|took|gave|said|told)\b/.test(lowerText)) {
                 features.push('Past Simple');
             }
@@ -734,7 +795,7 @@
                 features.push('Verbi modali (can, will, should, ecc.)');
             }
 
-            // Future (will/going to)
+            // Future
             if (/\b(will|gonna|going to)\b/.test(lowerText)) {
                 features.push('Futuro (will / going to)');
             }
