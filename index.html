@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a8a 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 40px;
+        }
+
+        .icon-container {
+            display: inline-block;
+            animation: bounce 2s infinite;
+            margin-bottom: 20px;
+        }
+
+        .main-icon {
+            font-size: 64px;
+            filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.5));
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, #fbbf24, #ec4899, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #c4b5fd;
+            font-size: 1.2rem;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .glow-effect {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, #ec4899, #a855f7);
+            border-radius: 20px;
+            filter: blur(30px);
+            opacity: 0.3;
+            animation: pulse 3s infinite;
+        }
+
+        .search-container {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .search-input-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        input {
+            width: 100%;
+            padding: 18px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input::placeholder {
+            color: #c4b5fd;
+        }
+
+        input:focus {
+            border-color: #ec4899;
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.3);
+        }
+
+        button {
+            padding: 18px 40px;
+            background: linear-gradient(90deg, #ec4899, #a855f7);
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.5);
+            white-space: nowrap;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 30px -5px rgba(236, 72, 153, 0.7);
+        }
+
+        button:disabled {
+            background: linear-gradient(90deg, #6b7280, #4b5563);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            border-radius: 12px;
+            color: #fecaca;
+        }
+
+        .results {
+            animation: fadeIn 0.6s;
+        }
+
+        .song-card {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .song-card-glow {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, #fbbf24, #ec4899);
+            border-radius: 20px;
+            filter: blur(40px);
+            opacity: 0.2;
+        }
+
+        .song-card-content {
+            position: relative;
+            background: linear-gradient(135deg, rgba(126, 58, 242, 0.8), rgba(79, 70, 229, 0.8));
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .song-info {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .album-icon {
+            width: 96px;
+            height: 96px;
+            background: linear-gradient(135deg, #ec4899, #a855f7);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            animation: pulse 2s infinite;
+            box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.5);
+        }
+
+        .song-details h2 {
+            font-size: 2rem;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 5px;
+        }
+
+        .song-details p {
+            font-size: 1.3rem;
+            color: #c4b5fd;
+            margin-bottom: 20px;
+        }
+
+        .links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .link-button {
+            padding: 12px 24px;
+            font-weight: bold;
+            border-radius: 12px;
+            text-decoration: none;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .youtube {
+            background: #dc2626;
+        }
+
+        .youtube:hover {
+            background: #b91c1c;
+            transform: scale(1.05);
+        }
+
+        .spotify {
+            background: #16a34a;
+        }
+
+        .spotify:hover {
+            background: #15803d;
+            transform: scale(1.05);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            padding: 18px 40px;
+            font-weight: bold;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #c4b5fd;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .tab.active {
+            background: linear-gradient(90deg, #ec4899, #a855f7);
+            color: white;
+            box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.5);
+        }
+
+        .tab.active.grammar {
+            background: linear-gradient(90deg, #fbbf24, #f97316);
+        }
+
+        .lyrics-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .lyrics-box {
+            position: relative;
+            height: 500px;
+            overflow-y: auto;
+        }
+
+        .lyrics-box-glow {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            filter: blur(25px);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .lyrics-box:hover .lyrics-box-glow {
+            opacity: 0.2;
+        }
+
+        .lyrics-box-content {
+            position: relative;
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .original-box {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.8), rgba(79, 70, 229, 0.8));
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .original-glow {
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+        }
+
+        .translation-box {
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.8), rgba(5, 150, 105, 0.8));
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .translation-glow {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .lyrics-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            padding-bottom: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .blue-dot {
+            background: #60a5fa;
+        }
+
+        .green-dot {
+            background: #34d399;
+        }
+
+        .lyrics-header h4 {
+            font-weight: 900;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+        }
+
+        .original-header {
+            color: #93c5fd;
+        }
+
+        .translation-header {
+            color: #6ee7b7;
+        }
+
+        .lyrics-text {
+            color: white;
+            line-height: 1.8;
+            font-size: 1.1rem;
+            white-space: pre-wrap;
+        }
+
+        .grammar-container {
+            position: relative;
+        }
+
+        .grammar-glow {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, #fbbf24, #f97316);
+            border-radius: 20px;
+            filter: blur(40px);
+            opacity: 0.2;
+        }
+
+        .grammar-content {
+            position: relative;
+            background: linear-gradient(135deg, rgba(180, 83, 9, 0.8), rgba(161, 98, 7, 0.8));
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .grammar-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .grammar-header h3 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #fcd34d;
+            text-transform: uppercase;
+        }
+
+        .grammar-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .grammar-tag {
+            padding: 12px 24px;
+            background: linear-gradient(90deg, #fbbf24, #f97316);
+            color: #111827;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+            transition: all 0.3s;
+            cursor: pointer;
+            animation: fadeIn 0.5s;
+        }
+
+        .grammar-tag:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(251, 191, 36, 0.5);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #ec4899, #8b5cf6);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, #db2777, #7c3aed);
+        }
+
+        @media (max-width: 768px) {
+            .lyrics-container {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+
+            .search-input-container {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon-container">
+                <div class="main-icon">🎵</div>
+            </div>
+            <h1>SONG ANALYZER</h1>
+            <p class="subtitle">🎵 Scopri, Traduci, Impara 🎵</p>
+        </div>
+
+        <div class="search-box">
+            <div class="glow-effect"></div>
+            <div class="search-container">
+                <div class="search-input-container">
+                    <div class="input-group">
+                        <input type="text" id="artistInput" placeholder="Artista (es: Queen)">
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="songInput" placeholder="Titolo (es: Radio Ga Ga)">
+                    </div>
+                    <button onclick="analyzeSong()">
+                        <span id="buttonText">✨ ANALIZZA</span>
+                    </button>
+                </div>
+                <div id="errorMessage" class="error hidden"></div>
+            </div>
+        </div>
+
+        <div id="results" class="results hidden">
+            <div class="song-card">
+                <div class="song-card-glow"></div>
+                <div class="song-card-content">
+                    <div class="song-info">
+                        <div class="album-icon">🎵</div>
+                        <div class="song-details">
+                            <h2 id="songTitle"></h2>
+                            <p id="songArtist"></p>
+                            <div class="links" id="linksContainer"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('lyrics')">
+                    🎵 TESTO
+                </button>
+                <button class="tab grammar" onclick="switchTab('grammar')">
+                    📚 GRAMMATICA
+                </button>
+            </div>
+
+            <div id="lyricsContent">
+                <div class="lyrics-container">
+                    <div class="lyrics-box">
+                        <div class="lyrics-box-glow original-glow"></div>
+                        <div class="lyrics-box-content original-box">
+                            <div class="lyrics-header">
+                                <div class="status-dot blue-dot"></div>
+                                <h4 class="original-header">Original 🇬🇧</h4>
+                            </div>
+                            <div class="lyrics-text" id="originalLyrics"></div>
+                        </div>
+                    </div>
+                    <div class="lyrics-box">
+                        <div class="lyrics-box-glow translation-glow"></div>
+                        <div class="lyrics-box-content translation-box">
+                            <div class="lyrics-header">
+                                <div class="status-dot green-dot"></div>
+                                <h4 class="translation-header">Traduzione 🇮🇹</h4>
+                            </div>
+                            <div class="lyrics-text" id="translatedLyrics"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="grammarContent" class="hidden">
+                <div class="grammar-container">
+                    <div class="grammar-glow"></div>
+                    <div class="grammar-content">
+                        <div class="grammar-header">
+                            <span style="font-size: 2rem;">📚</span>
+                            <h3>Funzioni Grammaticali Presenti</h3>
+                        </div>
+                        <div class="grammar-tags" id="grammarTags"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'lyrics';
+
+        document.getElementById('songInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeSong();
+            }
+        });
+
+        document.getElementById('artistInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeSong();
+            }
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'lyrics') {
+                document.getElementById('lyricsContent').classList.remove('hidden');
+                document.getElementById('grammarContent').classList.add('hidden');
+            } else {
+                document.getElementById('lyricsContent').classList.add('hidden');
+                document.getElementById('grammarContent').classList.remove('hidden');
+            }
+        }
+
+        async function analyzeSong() {
+            const artist = document.getElementById('artistInput').value.trim();
+            const songTitle = document.getElementById('songInput').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            const resultsDiv = document.getElementById('results');
+            const button = document.querySelector('button');
+            const buttonText = document.getElementById('buttonText');
+
+            if (!artist || !songTitle) {
+                errorDiv.textContent = '⚠️ Inserisci sia artista che titolo della canzone';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            errorDiv.classList.add('hidden');
+            resultsDiv.classList.add('hidden');
+            button.disabled = true;
+            buttonText.innerHTML = '⏳ Cerco il testo...';
+
+            try {
+                // 1. Ottieni i testi da lyrics.ovh (API gratuita senza API key)
+                const lyricsResponse = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songTitle)}`);
+                
+                if (!lyricsResponse.ok) {
+                    throw new Error('Canzone non trovata');
+                }
+
+                const lyricsData = await lyricsResponse.json();
+                const originalLyrics = lyricsData.lyrics;
+
+                if (!originalLyrics) {
+                    throw new Error('Testo non disponibile');
+                }
+
+                buttonText.innerHTML = '⏳ Traduco...';
+
+                // 2. Traduci con MyMemory API (gratuita, senza API key)
+                const translationResponse = await fetch(
+                    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalLyrics)}&langpair=en|it`
+                );
+                
+                const translationData = await translationResponse.json();
+                const translatedLyrics = translationData.responseData.translatedText;
+
+                buttonText.innerHTML = '⏳ Analizzo grammatica...';
+
+                // 3. Analisi grammaticale semplice
+                const grammaticalFeatures = analyzeGrammar(originalLyrics);
+
+                // 4. Crea link
+                const youtubeLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(artist + ' ' + songTitle + ' official')}`;
+                const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + songTitle)}`;
+
+                displayResults({
+                    title: songTitle,
+                    artist: artist,
+                    originalLyrics: originalLyrics.trim(),
+                    italianTranslation: translatedLyrics.trim(),
+                    youtubeLink: youtubeLink,
+                    spotifyLink: spotifyLink,
+                    grammaticalFeatures: grammaticalFeatures
+                });
+
+            } catch (err) {
+                console.error(err);
+                errorDiv.textContent = '⚠️ ' + (err.message || 'Errore durante l\'analisi. Verifica che artista e titolo siano corretti.');
+                errorDiv.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                buttonText.innerHTML = '✨ ANALIZZA';
+            }
+        }
+
+        function analyzeGrammar(text) {
+            const features = [];
+            const lowerText = text.toLowerCase();
+
+            // Present Simple (verbi base senza -ing/-ed)
+            if (/\b(is|are|am|do|does|have|has|want|need|like|love|know|think)\b/.test(lowerText)) {
+                features.push('Present Simple');
+            }
+
+            // Present Continuous (-ing)
+            if (/\b(is|are|am)\s+\w+ing\b/.test(lowerText)) {
+                features.push('Present Continuous');
+            }
+
+            // Past Simple (-ed o verbi irregolari)
+            if (/\b(was|were|did|had|went|came|saw|made|got|took|gave|said|told)\b/.test(lowerText)) {
+                features.push('Past Simple');
+            }
+
+            // Past Continuous
+            if (/\b(was|were)\s+\w+ing\b/.test(lowerText)) {
+                features.push('Past Continuous');
+            }
+
+            // Modal verbs
+            if (/\b(can|could|will|would|shall|should|may|might|must|ought)\b/.test(lowerText)) {
+                features.push('Verbi modali (can, will, should, ecc.)');
+            }
+
+            // Future (will/going to)
+            if (/\b(will|gonna|going to)\b/.test(lowerText)) {
+                features.push('Futuro (will / going to)');
+            }
+
+            // Phrasal verbs
+            if (/\b(give up|look for|turn on|turn off|get up|wake up|come back|go away|find out|look after)\b/.test(lowerText)) {
+                features.push('Phrasal verbs');
+            }
+
+            // Present Perfect
+            if (/\b(have|has)\s+(been|\w+ed|\w+en)\b/.test(lowerText)) {
+                features.push('Present Perfect');
+            }
+
+            // Conditional
+            if (/\bif\s+.*\b(would|could|will)\b/.test(lowerText)) {
+                features.push('Frasi condizionali (if...)');
+            }
+
+            // Passive voice
+            if (/\b(is|are|was|were|been)\s+(been\s+)?\w+(ed|en)\b/.test(lowerText)) {
+                features.push('Forma passiva');
+            }
+
+            // Comparatives
+            if (/\b(\w+er\s+than|more\s+\w+\s+than|less\s+\w+\s+than)\b/.test(lowerText)) {
+                features.push('Comparativi');
+            }
+
+            // Superlatives
+            if (/\b(the\s+\w+est|the\s+most\s+\w+|the\s+least\s+\w+)\b/.test(lowerText)) {
+                features.push('Superlativi');
+            }
+
+            // Imperative
+            if (/^(don't|do|let|come|go|stop|wait|listen|look|take|make)\s/m.test(lowerText)) {
+                features.push('Imperativo');
+            }
+
+            // Questions
+            if (/\b(what|where|when|why|how|who|which)\b.*\?/.test(lowerText)) {
+                features.push('Domande (wh- questions)');
+            }
+
+            // Negative forms
+            if (/\b(don't|doesn't|didn't|won't|can't|couldn't|shouldn't|wouldn't|isn't|aren't|wasn't|weren't)\b/.test(lowerText)) {
+                features.push('Forme negative');
+            }
+
+            // Gerunds
+            if (/\b(enjoy|keep|stop|finish|avoid|consider|mind)\s+\w+ing\b/.test(lowerText)) {
+                features.push('Gerundio (-ing dopo certi verbi)');
+            }
+
+            // Infinitives
+            if (/\bto\s+(be|have|do|go|make|get|see|know|think|take)\b/.test(lowerText)) {
+                features.push('Infinito (to + verbo)');
+            }
+
+            return features.length > 0 ? [...new Set(features)] : ['Strutture grammaticali di base'];
+        }
+
+        function displayResults(result) {
+            document.getElementById('songTitle').textContent = result.title;
+            document.getElementById('songArtist').textContent = result.artist;
+            document.getElementById('originalLyrics').textContent = result.originalLyrics;
+            document.getElementById('translatedLyrics').textContent = result.italianTranslation;
+
+            const linksContainer = document.getElementById('linksContainer');
+            linksContainer.innerHTML = '';
+            
+            if (result.youtubeLink) {
+                linksContainer.innerHTML += `
+                    <a href="${result.youtubeLink}" target="_blank" class="link-button youtube">
+                        ▶️ YouTube
+                    </a>
+                `;
+            }
+            
+            if (result.spotifyLink) {
+                linksContainer.innerHTML += `
+                    <a href="${result.spotifyLink}" target="_blank" class="link-button spotify">
+                        🎧 Spotify
+                    </a>
+                `;
+            }
+
+            const grammarContainer = document.getElementById('grammarTags');
+            grammarContainer.innerHTML = '';
+            
+            result.grammaticalFeatures.forEach((feature, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'grammar-tag';
+                tag.textContent = feature;
+                tag.style.animationDelay = `${index * 0.1}s`;
+                grammarContainer.appendChild(tag);
+            });
+
+            document.getElementById('results').classList.remove('hidden');
+            currentTab = 'lyrics';
+            document.getElementById('lyricsContent').classList.remove('hidden');
+            document.getElementById('grammarContent').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
